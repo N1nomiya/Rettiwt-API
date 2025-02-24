@@ -9,6 +9,7 @@ import {
 	IUserLikesResponse,
 	IUserMediaResponse,
 	IUserNotificationsResponse,
+	IUserNotificationTweetsResponse,
 	IUserRecommendedResponse,
 	IUserSubscriptionsResponse,
 	IUserTweetsAndRepliesResponse,
@@ -25,6 +26,7 @@ import { User } from '../../models/data/User';
 import { IRettiwtConfig } from '../../types/RettiwtConfig';
 
 import { FetcherService } from './FetcherService';
+import { LogService } from '../internal/LogService';
 
 /**
  * Handles interacting with resources related to user account
@@ -503,6 +505,63 @@ export class UserService extends FetcherService {
 			}
 
 			cursor = notifications.next.value;
+		}
+	}
+
+	/**
+	 * Stream following users' tweets from notifications of the logged in user in pseudo real-time.
+	 *
+	 * @param pollingInterval - The interval in milliseconds to poll for new tweets. Default interval is 60000 ms.
+	 *
+	 * @returns An async generator that yields new tweets from notifications as they are received.
+	 *
+	 * @example
+	 * ```
+	 * import { Rettiwt } from 'rettiwt-api';
+	 *
+	 * // Creating a new Rettiwt instance using the given 'API_KEY'
+	 * const rettiwt = new Rettiwt({ apiKey: API_KEY });
+	 *
+	 * // Creating a function that streams all new tweets from notifications
+	 * async function streamNotificationTweets() {
+	 * 	try {
+	 * 		// Awaiting for the tweets returned by the AsyncGenerator returned by the method
+	 * 		for await (const tweet of rettiwt.user.tweetsInNotification(1000)) {
+	 * 			console.log(tweet.text);
+	 * 		}
+	 * 	}
+	 * 	catch (err) {
+	 * 		console.log(err);
+	 * 	}
+	 * }
+	 *
+	 * // Calling the function
+	 * streamNotificationTweets();
+	 * ```
+	 */
+	public async *tweetsInNotification(
+		pollingInterval: number = 60000,
+		cursor: string = '',
+	): AsyncGenerator<{ tweets: Tweet[]; nextCursor: string }> {
+		const resource = EResourceType.USER_NOTIFICATION_TWEETS;
+		let first: boolean = true;
+		while (true) {
+			await new Promise((resolve) => setTimeout(resolve, pollingInterval));
+			const response = await this.request<IUserNotificationTweetsResponse>(resource, {
+				count: 40,
+				cursor: cursor,
+			});
+			const tweets = extractors[resource](response);
+
+			if (tweets.next.value) {
+				cursor = tweets.next.value;
+			}
+
+			if (!first) {
+				yield { tweets: tweets.list, nextCursor: cursor };
+			} else {
+				first = false;
+			}
 		}
 	}
 

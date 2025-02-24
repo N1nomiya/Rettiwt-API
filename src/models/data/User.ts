@@ -1,4 +1,4 @@
-import { IUser as IRawUser, ITimelineUser, IUser } from 'rettiwt-core';
+import { IUser as IRawUser, ITimelineUser, IUser, IUserNotificationUser } from 'rettiwt-core';
 
 import { ELogActions } from '../../enums/Logging';
 import { findByFilter } from '../../helper/JsonUtils';
@@ -55,21 +55,36 @@ export class User {
 	/**
 	 * @param user - The raw user details.
 	 */
-	public constructor(user: IRawUser) {
-		this.id = user.rest_id;
-		this.userName = user.legacy.screen_name;
-		this.fullName = user.legacy.name;
-		this.createdAt = user.legacy.created_at;
-		this.description = user.legacy.description.length ? user.legacy.description : undefined;
-		this.isVerified = user.is_blue_verified;
-		this.likeCount = user.legacy.favourites_count;
-		this.followersCount = user.legacy.followers_count;
-		this.followingsCount = user.legacy.friends_count;
-		this.statusesCount = user.legacy.statuses_count;
-		this.location = user.legacy.location.length ? user.legacy.location : undefined;
-		this.pinnedTweet = user.legacy.pinned_tweet_ids_str[0];
-		this.profileBanner = user.legacy.profile_banner_url;
-		this.profileImage = user.legacy.profile_image_url_https;
+	public constructor(user: IRawUser | IUserNotificationUser) {
+		if ('rest_id' in user) {
+			this.id = user.rest_id;
+			this.userName = user.legacy.screen_name;
+			this.fullName = user.legacy.name;
+			this.createdAt = user.legacy.created_at;
+			this.description = user.legacy.description.length ? user.legacy.description : undefined;
+			this.isVerified = user.is_blue_verified;
+			this.likeCount = user.legacy.favourites_count;
+			this.followersCount = user.legacy.followers_count;
+			this.followingsCount = user.legacy.friends_count;
+			this.statusesCount = user.legacy.statuses_count;
+			this.location = user.legacy.location.length ? user.legacy.location : undefined;
+			this.pinnedTweet = user.legacy.pinned_tweet_ids_str[0];
+			this.profileBanner = user.legacy.profile_banner_url;
+			this.profileImage = user.legacy.profile_image_url_https;
+		} else {
+			this.id = user.id_str;
+			this.userName = user.screen_name;
+			this.fullName = user.name;
+			this.createdAt = user.created_at;
+			this.description = user.description ?? undefined;
+			this.followersCount = user.followers_count;
+			this.followingsCount = user.friends_count;
+			this.isVerified = user.verified;
+			this.likeCount = user.favourites_count;
+			this.location = user.location ?? undefined;
+			this.profileImage = user.profile_image_url_https;
+			this.statusesCount = user.statuses_count;
+		}
 	}
 
 	/**

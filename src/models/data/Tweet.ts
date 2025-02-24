@@ -6,6 +6,9 @@ import {
 	IEntities as IRawTweetEntities,
 	ITimelineTweet,
 	ITweet,
+	IUserNotificationTweetsResponse,
+	IUserNotificationTweet,
+	IUserNotificationUser,
 } from 'rettiwt-core';
 
 import { ELogActions } from '../../enums/Logging';
@@ -75,24 +78,48 @@ export class Tweet {
 	/**
 	 * @param tweet - The raw tweet details.
 	 */
-	public constructor(tweet: IRawTweet) {
-		this.id = tweet.rest_id;
-		this.createdAt = tweet.legacy.created_at;
-		this.tweetBy = new User(tweet.core.user_results.result);
-		this.entities = new TweetEntities(tweet.legacy.entities);
-		this.media = tweet.legacy.extended_entities?.media?.map((media) => new TweetMedia(media));
-		this.quoted = this.getQuotedTweet(tweet);
-		this.fullText = tweet.note_tweet ? tweet.note_tweet.note_tweet_results.result.text : tweet.legacy.full_text;
-		this.replyTo = tweet.legacy.in_reply_to_status_id_str;
-		this.lang = tweet.legacy.lang;
-		this.quoteCount = tweet.legacy.quote_count;
-		this.replyCount = tweet.legacy.reply_count;
-		this.retweetCount = tweet.legacy.retweet_count;
-		this.likeCount = tweet.legacy.favorite_count;
-		this.viewCount = tweet.views.count ? parseInt(tweet.views.count) : 0;
-		this.bookmarkCount = tweet.legacy.bookmark_count;
-		this.retweetedTweet = this.getRetweetedTweet(tweet);
-		this.url = `https://x.com/${this.tweetBy.userName}/status/${this.id}`;
+	public constructor(
+		tweet:
+			| IRawTweet
+			| { rawTweet: IUserNotificationTweet; user: User; entities: TweetEntities; media: TweetMedia[] },
+	) {
+		if ('rawTweet' in tweet) {
+			this.id = tweet.rawTweet.id_str;
+			this.createdAt = tweet.rawTweet.created_at;
+			this.tweetBy = tweet.user;
+			this.entities = tweet.entities;
+			this.media = tweet.media;
+			this.quoted = undefined;
+			this.fullText = tweet.rawTweet.full_text;
+			this.replyTo = tweet.rawTweet.in_reply_to_status_id_str ?? undefined;
+			this.lang = tweet.rawTweet.lang;
+			this.quoteCount = tweet.rawTweet.quote_count;
+			this.replyCount = tweet.rawTweet.reply_count;
+			this.retweetCount = tweet.rawTweet.retweet_count;
+			this.likeCount = tweet.rawTweet.favorite_count;
+			this.viewCount = 0;
+			this.bookmarkCount = 0;
+			this.retweetedTweet = undefined;
+			this.url = `https://x.com/${this.tweetBy.userName}/status/${this.id}`;
+		} else {
+			this.id = tweet.rest_id;
+			this.createdAt = tweet.legacy.created_at;
+			this.tweetBy = new User(tweet.core.user_results.result);
+			this.entities = new TweetEntities(tweet.legacy.entities);
+			this.media = tweet.legacy.extended_entities?.media?.map((media) => new TweetMedia(media));
+			this.quoted = this.getQuotedTweet(tweet);
+			this.fullText = tweet.note_tweet ? tweet.note_tweet.note_tweet_results.result.text : tweet.legacy.full_text;
+			this.replyTo = tweet.legacy.in_reply_to_status_id_str;
+			this.lang = tweet.legacy.lang;
+			this.quoteCount = tweet.legacy.quote_count;
+			this.replyCount = tweet.legacy.reply_count;
+			this.retweetCount = tweet.legacy.retweet_count;
+			this.likeCount = tweet.legacy.favorite_count;
+			this.viewCount = tweet.views.count ? parseInt(tweet.views.count) : 0;
+			this.bookmarkCount = tweet.legacy.bookmark_count;
+			this.retweetedTweet = this.getRetweetedTweet(tweet);
+			this.url = `https://x.com/${this.tweetBy.userName}/status/${this.id}`;
+		}
 	}
 
 	/**
@@ -192,6 +219,84 @@ export class Tweet {
 		return tweets;
 	}
 
+	public static listInNotification(response: IUserNotificationTweetsResponse): Tweet[] {
+		const tweetObjs = response.globalObjects.tweets;
+		const userObjs = response.globalObjects.users;
+
+		if (!tweetObjs || !userObjs) {
+			return [];
+		}
+
+		const users = Object.values(userObjs).map((user) => new User(user));
+		let rawTweets = Object.values(tweetObjs).sort(
+			(a, b) => new Date(a.created_at).valueOf() - new Date(b.created_at).valueOf(),
+		);
+		let tweets: Tweet[] = [];
+
+		for (const rawTweet of rawTweets) {
+			const user = users.find((user) => user.id == rawTweet.user_id_str);
+
+			if (!user) {
+				LogService.log(ELogActions.WARNING, {
+					action: ELogActions.DESERIALIZE,
+					message: `User not found for tweet ${rawTweet.id_str}, skipping`,
+				});
+				continue;
+			}
+
+			LogService.log(ELogActions.DESERIALIZE, { id: rawTweet.id_str });
+
+			const entities = new TweetEntities();
+			entities.hashtags = rawTweet.entities.hashtags.map((hashtag) => hashtag.text);
+			entities.mentionedUsers = rawTweet.entities.user_mentions.map((mention) => mention.screen_name);
+			entities.urls = rawTweet.entities.urls.map((url) => url.expanded_url);
+			entities.symbols = rawTweet.entities.symbols.map((symbol) => symbol.text);
+
+			let medias: TweetMedia[] = [];
+			if (rawTweet.entities.media) {
+				for (const media of rawTweet.entities.media) {
+					const tweetMedia = new TweetMedia();
+					tweetMedia.type = media.type ?? EMediaType.PHOTO;
+					tweetMedia.url = media.media_url_https ?? '';
+					tweetMedia.thumbnailUrl = media.media_url_https ?? '';
+					medias.push(tweetMedia);
+				}
+			}
+
+			const tweet = new Tweet({ rawTweet, user, entities, media: medias });
+			tweets.push(tweet);
+		}
+
+		const tweetsToRemove = new Set<string>();
+
+		for (const rawTweet of rawTweets) {
+			if (rawTweet.retweeted_status_id_str) {
+				const tweet = tweets.find((t) => t.id == rawTweet.id_str);
+				const retweetedTweet = tweets.find((t) => t.id == rawTweet.retweeted_status_id_str);
+
+				if (tweet && retweetedTweet) {
+					tweet.retweetedTweet = retweetedTweet;
+					tweetsToRemove.add(retweetedTweet.id);
+				}
+			}
+
+			if (rawTweet.quoted_status_id_str) {
+				const tweet = tweets.find((t) => t.id == rawTweet.id_str);
+				const quotedTweet = tweets.find((t) => t.id == rawTweet.quoted_status_id_str);
+
+				if (tweet && quotedTweet) {
+					tweet.quoted = quotedTweet;
+					tweetsToRemove.add(quotedTweet.id);
+        }
+      }
+		}
+
+		// Remove all retweets at once
+		tweets = tweets.filter((tweet) => !tweetsToRemove.has(tweet.id));
+
+		return tweets;
+	}
+
 	/**
 	 * Extracts and deserializes a single target tweet from the given raw response data.
 	 *
@@ -243,10 +348,17 @@ export class TweetEntities {
 	/** The list of urls mentioned in the tweet. */
 	public urls: string[] = [];
 
+	/** The list of symbols mentioned in the tweet. */
+	public symbols: string[] = [];
+
 	/**
 	 * @param entities - The raw tweet entities.
 	 */
-	public constructor(entities: IRawTweetEntities) {
+	public constructor(entities?: IRawTweetEntities) {
+		if (!entities) {
+			return;
+		}
+
 		// Extracting user mentions
 		if (entities.user_mentions) {
 			for (const user of entities.user_mentions) {
@@ -280,7 +392,7 @@ export class TweetMedia {
 	public thumbnailUrl?: string;
 
 	/** The type of media. */
-	public type: EMediaType;
+	public type: EMediaType = EMediaType.PHOTO;
 
 	/** The direct URL to the media. */
 	public url: string = '';
@@ -288,7 +400,11 @@ export class TweetMedia {
 	/**
 	 * @param media - The raw media details.
 	 */
-	public constructor(media: IRawExtendedMedia) {
+	public constructor(media?: IRawExtendedMedia) {
+		if (!media) {
+			return;
+		}
+
 		this.type = media.type;
 
 		// If the media is a photo

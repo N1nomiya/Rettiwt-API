@@ -24,6 +24,7 @@ import {
 	IUserLikesResponse,
 	IUserMediaResponse,
 	IUserNotificationsResponse,
+	IUserNotificationTweetsResponse,
 	IUserRecommendedResponse,
 	IUserSubscriptionsResponse,
 	IUserTweetsAndRepliesResponse,
@@ -92,6 +93,8 @@ export const extractors = {
 		new CursoredData<Tweet>(response, EBaseType.TWEET),
 	USER_NOTIFICATIONS: (response: IUserNotificationsResponse): CursoredData<Notification> =>
 		new CursoredData<Notification>(response, EBaseType.NOTIFICATION),
+	USER_NOTIFICATION_TWEETS: (response: IUserNotificationTweetsResponse): CursoredData<Tweet> =>
+		new CursoredData<Tweet>(response, EBaseType.NOTIFICATION_TWEET),
 	USER_SUBSCRIPTIONS: (response: IUserSubscriptionsResponse): CursoredData<User> =>
 		new CursoredData<User>(response, EBaseType.USER),
 	USER_TIMELINE: (response: IUserTweetsResponse): CursoredData<Tweet> =>

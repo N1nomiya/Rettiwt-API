@@ -63,6 +63,7 @@ export class FetchArgs {
 			EResourceType.USER_LIKES,
 			EResourceType.USER_MEDIA,
 			EResourceType.USER_NOTIFICATIONS,
+			EResourceType.USER_NOTIFICATION_TWEETS,
 			EResourceType.USER_SUBSCRIPTIONS,
 			EResourceType.USER_TIMELINE,
 			EResourceType.USER_TIMELINE_AND_REPLIES,
@@ -81,6 +82,7 @@ export class FetchArgs {
 			EResourceType.USER_LIKES,
 			EResourceType.USER_MEDIA,
 			EResourceType.USER_NOTIFICATIONS,
+			EResourceType.USER_NOTIFICATION_TWEETS,
 			EResourceType.USER_SUBSCRIPTIONS,
 			EResourceType.USER_TIMELINE,
 			EResourceType.USER_TIMELINE_AND_REPLIES,
@@ -101,7 +103,7 @@ export class FetchArgs {
 		],
 	})
 	@Max(40, {
-		groups: [EResourceType.USER_NOTIFICATIONS],
+		groups: [EResourceType.USER_NOTIFICATIONS, EResourceType.USER_NOTIFICATION_TWEETS],
 	})
 	@Max(20, {
 		groups: [EResourceType.TWEET_SEARCH, EResourceType.USER_TIMELINE, EResourceType.USER_TIMELINE_AND_REPLIES],
@@ -138,6 +140,7 @@ export class FetchArgs {
 			EResourceType.USER_LIKES,
 			EResourceType.USER_MEDIA,
 			EResourceType.USER_NOTIFICATIONS,
+			EResourceType.USER_NOTIFICATION_TWEETS,
 			EResourceType.USER_SUBSCRIPTIONS,
 			EResourceType.USER_TIMELINE,
 			EResourceType.USER_TIMELINE_AND_REPLIES,
@@ -158,6 +161,7 @@ export class FetchArgs {
 			EResourceType.USER_LIKES,
 			EResourceType.USER_MEDIA,
 			EResourceType.USER_NOTIFICATIONS,
+			EResourceType.USER_NOTIFICATION_TWEETS,
 			EResourceType.USER_SUBSCRIPTIONS,
 			EResourceType.USER_TIMELINE,
 			EResourceType.USER_TIMELINE_AND_REPLIES,
@@ -189,6 +193,7 @@ export class FetchArgs {
 			EResourceType.USER_LIKES,
 			EResourceType.USER_MEDIA,
 			EResourceType.USER_NOTIFICATIONS,
+			EResourceType.USER_NOTIFICATION_TWEETS,
 			EResourceType.USER_SUBSCRIPTIONS,
 			EResourceType.USER_TIMELINE,
 			EResourceType.USER_TIMELINE_AND_REPLIES,
@@ -211,6 +216,7 @@ export class FetchArgs {
 			EResourceType.USER_FEED_FOLLOWED,
 			EResourceType.USER_FEED_RECOMMENDED,
 			EResourceType.USER_NOTIFICATIONS,
+			EResourceType.USER_NOTIFICATION_TWEETS,
 		],
 	})
 	@IsNotEmpty({
@@ -299,6 +305,7 @@ export class FetchArgs {
 			EResourceType.USER_LIKES,
 			EResourceType.USER_MEDIA,
 			EResourceType.USER_NOTIFICATIONS,
+			EResourceType.USER_NOTIFICATION_TWEETS,
 			EResourceType.USER_SUBSCRIPTIONS,
 			EResourceType.USER_TIMELINE,
 			EResourceType.USER_TIMELINE_AND_REPLIES,

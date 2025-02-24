@@ -5,6 +5,7 @@
  */
 export enum EBaseType {
 	NOTIFICATION = 'Notification',
+	NOTIFICATION_TWEET = 'NotificationTweet',
 	TWEET = 'Tweet',
 	USER = 'User',
 }

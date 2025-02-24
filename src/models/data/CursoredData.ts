@@ -1,4 +1,4 @@
-import { ICursor } from 'rettiwt-core';
+import { ICursor, IUserNotificationTweetsResponse } from 'rettiwt-core';
 
 import { EBaseType } from '../../enums/Data';
 
@@ -26,7 +26,7 @@ export class CursoredData<T extends Notification | Tweet | User> {
 	 * @param response - The raw response.
 	 * @param type - The base type of the data included in the batch.
 	 */
-	public constructor(response: {}, type: EBaseType) {
+	public constructor(response: {} | IUserNotificationTweetsResponse, type: EBaseType) {
 		if (type == EBaseType.TWEET) {
 			this.list = Tweet.list(response) as T[];
 			this.next = new Cursor(findByFilter<ICursor>(response, 'cursorType', 'Bottom')[0]?.value ?? '');
@@ -35,6 +35,9 @@ export class CursoredData<T extends Notification | Tweet | User> {
 			this.next = new Cursor(findByFilter<ICursor>(response, 'cursorType', 'Bottom')[0]?.value ?? '');
 		} else if (type == EBaseType.NOTIFICATION) {
 			this.list = Notification.list(response) as T[];
+			this.next = new Cursor(findByFilter<ICursor>(response, 'cursorType', 'Top')[0]?.value ?? '');
+		} else if (type == EBaseType.NOTIFICATION_TWEET) {
+			this.list = Tweet.listInNotification(response as IUserNotificationTweetsResponse) as T[];
 			this.next = new Cursor(findByFilter<ICursor>(response, 'cursorType', 'Top')[0]?.value ?? '');
 		}
 	}
