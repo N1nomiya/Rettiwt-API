@@ -27,6 +27,7 @@ import { IRettiwtConfig } from '../../types/RettiwtConfig';
 
 import { FetcherService } from './FetcherService';
 import { LogService } from '../internal/LogService';
+import { TweetService } from './TweetService';
 
 /**
  * Handles interacting with resources related to user account
@@ -34,6 +35,7 @@ import { LogService } from '../internal/LogService';
  * @public
  */
 export class UserService extends FetcherService {
+	private config?: IRettiwtConfig;
 	/**
 	 * @param config - The config object for configuring the Rettiwt instance.
 	 *
@@ -41,6 +43,7 @@ export class UserService extends FetcherService {
 	 */
 	public constructor(config?: IRettiwtConfig) {
 		super(config);
+		this.config = config;
 	}
 
 	/**
@@ -547,10 +550,27 @@ export class UserService extends FetcherService {
 		let first: boolean = true;
 		while (true) {
 			await new Promise((resolve) => setTimeout(resolve, pollingInterval));
+
 			const response = await this.request<IUserNotificationTweetsResponse>(resource, {
 				count: 40,
 				cursor: cursor,
 			});
+
+			if (!first) {
+				if (response.globalObjects.tweets) {
+					for (const rawTweet of Object.values(response.globalObjects.tweets)) {
+						if (rawTweet.display_text_range.length > 1 && rawTweet.display_text_range[1] > 270) {
+							try {
+								const detailedTweet = await new TweetService(this.config).details(rawTweet.id_str);
+								if (detailedTweet) {
+									rawTweet.full_text = detailedTweet.fullText;
+								}
+							} catch (error) {}
+						}
+					}
+				}
+			}
+
 			const tweets = extractors[resource](response);
 
 			if (tweets.next.value) {
@@ -561,6 +581,7 @@ export class UserService extends FetcherService {
 				yield { tweets: tweets.list, nextCursor: cursor };
 			} else {
 				first = false;
+				yield { tweets: [], nextCursor: cursor };
 			}
 		}
 	}
